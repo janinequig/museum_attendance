@@ -7,6 +7,8 @@ quigle_j1@denison.edu
 
 ### Purpose
 
+Research museum attendance
+
 ### Data
 
 ### Code
