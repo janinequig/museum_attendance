@@ -1,5 +1,6 @@
-# museum_attendance
-Senior capstone project researching factors that affect art museum attendance.
+# Museum Participation and Attendance Factors
+
+This github is a homepage for my senior capstone project that is researching factors that affect art museum attendance in the United States.
 
 ### Author
 
@@ -19,8 +20,12 @@ To complete this analysis, I will be using data provided by the Survey of Public
 
 ##### https://www.icpsr.umich.edu/web/NADAC/studies/37138 
 
+I will be completing my analysis through RStudio.
+
 ### Code
 
 To move forward with analysis, I expect to use linear and logistic regression, along with correlation tests. Additionally, I will use variable selection and classificaiton/clustering models.
 
 ### Findings
+
+Coming Soon..!
