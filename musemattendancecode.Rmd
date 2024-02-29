@@ -1,0 +1,21 @@
+---
+title: "Untitled"
+author: "Janine Quigley"
+date: "2024-02-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+```{r}
+data = da37138.0001
+```
+
+```{r}
+data = data %>% select(PTDTRACE, PESEX, PRTAGE, GEREG, PENLFRET, GTCBSASZ, PEMEQ12, PEMEQ11, PESCHFT, PRCITSHP, PEMARITL, HEFAMINC, PEEDUCA, PEC2Q1B, PEC1Q10A, PTC1Q10B, PEC2Q2B,PEMDQ4, PEMDQ6)
+```
+
+
