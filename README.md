@@ -26,6 +26,11 @@ I will be completing my analysis through RStudio.
 
 To move forward with analysis, I expect to use linear and logistic regression, along with correlation tests. Additionally, I will use variable selection and classificaiton/clustering models.
 
+#### Updates:
+##### - Loading code into RStudio (DONE)
+##### - Selecting relevant variable columns (IN PROGRESS)
+##### - Summary Statistics (TO-DO)
+
 ### Findings
 
 Coming Soon..!
