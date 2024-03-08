@@ -8,14 +8,229 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
+library(readxl)
+library(readr)
+library(mice)
+library(ggplot2)
+library(GGally)
+library(arules)
+library(ggfortify)
+library(verification)
+datafull = read_tsv("37138-0001-Data.tsv")
+
+# USE ggsave()
+
+```
+
+#### Variable Breakdown:
+ PTDTRACE, PESEX, PRTAGE, GEREG, PEMLR, GTCBSASZ, PEMEQ12, PEMEQ11, PESCHFT, PRCITSHP, PEMARITL, HEFAMINC, PRHRUSL,PEHRUSL1,PEEDUCA, PEC2Q1B, PEC1Q10A, PTC1Q10B, PEC2Q2B, PEMDQ4, PEMDQ6
+
+```{r}
+data = datafull %>% select(
+  PTDTRACE, 
+  PESEX, 
+  PRTAGE, 
+  GEREG, 
+  PEMLR, 
+  GTCBSASZ, 
+  PEMEQ12, 
+  PEMEQ11, 
+  PESCHFT, 
+  PRCITSHP, 
+  PEMARITL, 
+  HEFAMINC, 
+  PRHRUSL,
+  PEHRUSL1,
+  PEEDUCA, 
+  PEC2Q1B, 
+  PEC1Q10A, 
+  PTC1Q10B, 
+  PEC2Q2B, 
+  PEMDQ4, 
+  PEMDQ6)
+
+#-1 is blank/NA
 ```
 
 ```{r}
-data = da37138.0001
+
+#filter based on dependent variable (museum visit Y/N)
+
+data = data %>% filter(PEC1Q10A > 0) # leaves us with 8,711 obs
+
+
+# new column names
+
+col_names = c("Race", "Sex", "Age", "Region", "LaborForce", "CitySize", "ArtsInfo", "ArtsOpportunity", "Student", "CitizenshipStatus", "MaritalStatus", "FamilyIncome", "WrkHrsRange", "WeeklyHrsWrk", "Education", "VisitExhibit", "VisitMuseum", "NumMuseumVisit", "ExhibitVisitRange", "ArtsOrgSubscribe", "PurchaseArt")
+
+colnames(data) = col_names
 ```
 
+#### Deal with NA's
+
 ```{r}
-data = data %>% select(PTDTRACE, PESEX, PRTAGE, GEREG, PENLFRET, GTCBSASZ, PEMEQ12, PEMEQ11, PESCHFT, PRCITSHP, PEMARITL, HEFAMINC, PEEDUCA, PEC2Q1B, PEC1Q10A, PTC1Q10B, PEC2Q2B,PEMDQ4, PEMDQ6)
+data = subset(data, select=-c(VisitExhibit,ExhibitVisitRange))
+
+cols_toNA = c("ArtsInfo", "ArtsOpportunity","Student","WrkHrsRange", "WeeklyHrsWrk", "ArtsOrgSubscribe", "PurchaseArt")
+cols_tozero = c("NumMuseumVisit")
+
+data = data %>% mutate_at(cols_toNA, ~ifelse(.< 0, NA,.))
+data = data %>% mutate_at(cols_tozero, ~ifelse(.<0,0,.))
+
+# Convert numeric columns to factors
+
+factor_cols <- c("Race", "Sex", "Region", "FamilyIncome", "CitySize", "MaritalStatus", "Education", "CitizenshipStatus", "VisitMuseum", "ArtsOrgSubscribe", "PurchaseArt", "LaborForce", "ArtsInfo", "ArtsOpportunity", "Student", "WrkHrsRange")
+
+data <- data %>%
+  mutate_at(vars(factor_cols), factor)
+
+subdata = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
+data14 = na.omit(subdata) 
+  # removed 5 variables with lots of NAs (Student, ArtsInfo, ArtsOpportunity, WrkHrsRange, WeeklyHrsWrk) - left with 830 x 14
+
+subdata2 = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt) 
+  # removed Student, WrkHrsRange, and WeeklyHrsWrk - left with 807 x 16
+data16 = na.omit(subdata2)
+
+subdata3 = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, WrkHrsRange, WeeklyHrsWrk, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
+na.omit(subdata3) 
+  #removed student - left with 468 x 18 ... is it enough?
+
+```
+
+##### Change Factor Names for Clarity
+
+```{r}
+racenames = c("White", "Black", "American Indian", "Asian", "Hawaiian/PI", "White/Black", "White/AI", "White/Asian", "White/H/PI", "Black/AI", "Asian/H/PI", "White/Black/AI", "White/Asian/H/PI")
+levels(data14$Race) = racenames
+
+levels(data14$Sex) = c("Male","Female")
+
+regionnames = c("Northeast", "Midwest", "South", "West")
+levels(data14$Region) = regionnames
+
+laborforcenames = c("Employed(working)", "Employed(absent)", "Unemployed(layoff)", "Unemployed(looking)", "Retired", "Disabled", "Not In Labor Force")
+levels(data14$LaborForce) = laborforcenames
+
+citynames = c("Not Identified/Metropolitan", "100,000 - 249,999", "250,000 - 499,999", "500,000 - 999,999", "1,000,000 - 2,499,999", "2,500,000 - 4,999,999", "5,000,000+")
+levels(data14$CitySize) = citynames
+
+citizennames = c("Native - US Born", "Native - PR/other US Island Born", "Native - Born Abroad", "Foreign Born - US Citizen by Naturalization", "Foreign Born - Not US Citizen")
+levels(data14$CitizenshipStatus) = citizennames
+
+maritalnames = c("Married(spouse present)", "Married(spouse absent)", "Widowed", "Divorced", "Separated", "Never Married")
+levels(data14$MaritalStatus) = maritalnames
+
+incomenames = c("<$5,000", "$5,000 - 7,499", "$7,500 - 9,999", "$10,000 - 12,499", "$12,500 - 14,999", "$15,000 - 19,999", "$20,000 - 24,999", "$25,000 - 29,999", "$30,000 - 34,999", "$35,000 - 39,999", "$40,000 - 49,999", "$50,000 - 59,999", "$60,000 - 74,999", "$75,000 - 99,999", "$100,000 - 149,999", "$150,000+")
+levels(data14$FamilyIncome) = incomenames
+
+edunames = c("Less than 1st", "1st,2nd,3rd,or 4th", "5th/6th", "7th/8th", "9th", "10th", "11th", "12th(no diploma)", "Highschool/GED", "Some College", "Associate's(occupational)", "Associate's(academic)", "Bachelor's", "Master's", "Professional(MD/DDS/DVM)", "Doctorate(PhD/EdD)")
+levels(data14$Education) = edunames
+
+levels(data14$VisitMuseum) = c("Yes","No")
+levels(data14$ArtsOrgSubscribe) = c("Yes","No")
+levels(data14$PurchaseArt) = c("Yes","No")
+```
+
+###### multiple imputation
+
+```{r}
+imp = mice(data= data, m = 5, method = 'pmm', seed = 123)
+summary(imp)
+
+micedata = complete(imp) # second data, with all observations
+```
+
+### Summary Statistics
+
+```{r}
+# use 3,395 obs dataset
+stats = summary(data14)
+print(stats)
+
+
+#stats3 = summary(micedata)
+```
+
+### Chi-Squared Tests
+
+```{r}
+chi1 = chisq.test(data14$Race, data14$VisitMuseum)
+print(chi1) #  reject null hypo
+
+chi2 = chisq.test(data14$Sex, data14$VisitMuseum)
+print(chi2) #  reject null hypo
+
+chi3 = chisq.test(data14$Region, data14$VisitMuseum)
+print(chi3) # reject null hypo
+
+chi4 = chisq.test(data14$LaborForce, data14$VisitMuseum)
+print(chi4) # reject null hypo
+
+chi5 = chisq.test(data14$CitySize, data14$VisitMuseum)
+print(chi5) # reject null hypo
+
+chi6 = chisq.test(data14$CitizenshipStatus, data14$VisitMuseum)
+print(chi6) # CANNOT reject null hypo, and p > 0.05
+
+chi7 = chisq.test(data14$MaritalStatus, data14$VisitMuseum)
+print(chi7) # reject null hypo
+
+chi8 = chisq.test(data14$FamilyIncome, data14$VisitMuseum)
+print(chi8) # reject null hypo
+
+chi9 = chisq.test(data14$Education, data14$VisitMuseum)
+print(chi9) # reject null hypo
+
+```
+
+### Anova
+
+```{r}
+anova1 <- aov(NumMuseumVisit ~ Race + Sex +Age + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus +  FamilyIncome +  Education, data=data14)
+summary(anova1)
+hist(data14$NumMuseumVisit)
+```
+
+
+
+
+### Linear Regression
+
+```{r}
+lm1 = lm(NumMuseumVisit ~ Race + Sex + Age + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus + FamilyIncome + Education, data=data14)
+summary(lm1)
+residuals = resid(lm1)
+# View the residuals
+print(residuals)
+autoplot(lm1)
+
+
+```
+
+#### Logistic Regression
+
+```{r}
+log1 <- glm(VisitMuseum ~ Race + Sex + Age + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus + FamilyIncome + Education, data = data14, family = "binomial")
+summary(log1)
+autoplot(log1)
+predicted = predict(log1, type = "response")
+
+# True labels
+truelabels = data14$VisitMuseum
+
+# Calculate ROC curve
+library(pROC)
+roc_curve <- roc(truelabels, predicted)
+plot.roc(roc_curve)
+# Plot ROC curve
+plot(roc_curve, main = "ROC Curve", col = "blue")
+
+roc_curve <- roc(truelabels, predicted)
+
+# Calculate AUC
+auc_value <- auc(roc_curve)
+
 ```
 
 
