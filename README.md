@@ -28,8 +28,13 @@ To move forward with analysis, I expect to use linear and logistic regression, a
 
 #### Updates:
 ##### - Loading data into RStudio (DONE)
-##### - Selecting relevant variable columns (IN PROGRESS)
-##### - Summary Statistics (TO-DO)
+##### - Selecting relevant variable columns (DONE)
+##### - Summary Statistics (DONE)
+##### - Chi-Squared Tests (DONE)
+##### - Linear and Logistic Regression (DONE)
+##### - Zero-Inflated Poisson Model (IN-PROGRESS)
+##### - Decision Tree and Random Forest Models (TO-DO)
+##### - Visualizations in Tableau (TO-DO)
 
 ### Findings
 
