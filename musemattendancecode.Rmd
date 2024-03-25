@@ -16,6 +16,8 @@ library(GGally)
 library(arules)
 library(ggfortify)
 library(verification)
+library(pROC)
+library(pscl)
 datafull = read_tsv("37138-0001-Data.tsv")
 
 # USE ggsave()
@@ -26,13 +28,7 @@ datafull = read_tsv("37138-0001-Data.tsv")
  PTDTRACE, PESEX, PRTAGE, GEREG, PEMLR, GTCBSASZ, PEMEQ12, PEMEQ11, PESCHFT, PRCITSHP, PEMARITL, HEFAMINC, PRHRUSL,PEHRUSL1,PEEDUCA, PEC2Q1B, PEC1Q10A, PTC1Q10B, PEC2Q2B, PEMDQ4, PEMDQ6
 
 ```{r}
-data = datafull %>% select(
-  PTDTRACE, 
-  PESEX, 
-  PRTAGE, 
-  GEREG, 
-  PEMLR, 
-  GTCBSASZ, 
+data = datafull %>% dplyr::select(PTDTRACE, PESEX, PRTAGE, GEREG, PEMLR, GTCBSASZ, 
   PEMEQ12, 
   PEMEQ11, 
   PESCHFT, 
@@ -84,15 +80,15 @@ factor_cols <- c("Race", "Sex", "Region", "FamilyIncome", "CitySize", "MaritalSt
 data <- data %>%
   mutate_at(vars(factor_cols), factor)
 
-subdata = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
+subdata = data %>% dplyr::select(Race, Sex, Age, Region, LaborForce, CitySize, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
 data14 = na.omit(subdata) 
   # removed 5 variables with lots of NAs (Student, ArtsInfo, ArtsOpportunity, WrkHrsRange, WeeklyHrsWrk) - left with 830 x 14
 
-subdata2 = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt) 
+subdata2 = data %>% dplyr::select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt) 
   # removed Student, WrkHrsRange, and WeeklyHrsWrk - left with 807 x 16
 data16 = na.omit(subdata2)
 
-subdata3 = data %>% select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, WrkHrsRange, WeeklyHrsWrk, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
+subdata3 = data %>% dplyr::select(Race, Sex, Age, Region, LaborForce, CitySize, ArtsInfo, ArtsOpportunity, WrkHrsRange, WeeklyHrsWrk, CitizenshipStatus, MaritalStatus, FamilyIncome, Education, VisitMuseum, NumMuseumVisit, ArtsOrgSubscribe, PurchaseArt)
 na.omit(subdata3) 
   #removed student - left with 468 x 18 ... is it enough?
 
@@ -144,6 +140,7 @@ micedata = complete(imp) # second data, with all observations
 ### Summary Statistics
 
 ```{r}
+write.csv(data14, "C:\\Users\\janin\\OneDrive\\Documents\\DA401\\MuseumResearchData.csv", row.names=FALSE)
 # use 3,395 obs dataset
 stats = summary(data14)
 print(stats)
@@ -205,6 +202,12 @@ residuals = resid(lm1)
 print(residuals)
 autoplot(lm1)
 
+plot(NumMuseumVisit ~ Race, data = data14)
+
+ggplot(data14, aes(x = Race, y = NumMuseumVisit)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") + labs(title="Race vs. Number of Museum Visits")
+confint(lm1) #confidence interval
 
 ```
 
@@ -220,7 +223,6 @@ predicted = predict(log1, type = "response")
 truelabels = data14$VisitMuseum
 
 # Calculate ROC curve
-library(pROC)
 roc_curve <- roc(truelabels, predicted)
 plot.roc(roc_curve)
 # Plot ROC curve
@@ -233,4 +235,26 @@ auc_value <- auc(roc_curve)
 
 ```
 
+##### correlation
 
+```{r}
+a = cbind(data14$Race, data14$Sex, data14$Age, data14$Region, data14$LaborForce, data14$CitySize, data14$CitizenshipStatus, data14$MaritalStatus, data14$FamilyIncome, data14$Education)
+cormatrix = cor(a)
+cormatrix
+```
+
+
+#### Poisson Model (to handle zero-heavy data)
+
+```{r}
+poisson1 = zeroinfl(NumMuseumVisit ~ Race + Sex + Age + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus + FamilyIncome + Education | VisitMuseum, dist = 'poisson', data = data14)
+
+with(data14, table(NumMuseumVisit,Race))
+summary(poisson1)
+
+negbi1 = zeroinfl(VisitMuseum ~ Race + Sex + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus + FamilyIncome + Education | Race + Sex + Region + LaborForce + CitySize + CitizenshipStatus + MaritalStatus + FamilyIncome + Education, dist = 'negbin', data = data14)
+summary(negbi1)
+na.omit(data14)
+```
+
+#### decision trees, knn neighbors, random forest, 
